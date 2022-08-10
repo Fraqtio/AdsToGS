@@ -1,9 +1,9 @@
 from facebook_business.adobjects.adaccount import AdAccount
 import pandas as pd
-import httplib2
+from httplib2 import Http
 import apiclient
 from oauth2client.service_account import ServiceAccountCredentials
-import datetime
+from datetime import datetime
 import json
 from facebook_business.api import FacebookAdsApi
 import tkinter
@@ -48,14 +48,14 @@ def write_to_df(ad_info, columns_list):
     return table_df
 
 
-# Writing data from 1 Ads manager Account from today to 1 google sheet. Rewriting if 'today' data already writed.
+# Writing data from 1 Ads manager Account from today to 1 google sheet. Rewriting if 'today' data already writen.
 def write_to_gss(sheet_id, columns_dict, access_token, ad_acc_id, credence_file):
     dataframe = write_to_df(take_ad_info(ad_acc_id=ad_acc_id, token=access_token), columns_dict)
-    # Authorizing to google sheet API by credens_file with API_KEY
+    # Authorizing to google sheet API by credence_file with API_KEY
     credentials = ServiceAccountCredentials.from_json_keyfile_name(credence_file,
                                                                    ['https://www.googleapis.com/auth/spreadsheets',
                                                                     'https://www.googleapis.com/auth/drive'])
-    httpauth = credentials.authorize(httplib2.Http())
+    httpauth = credentials.authorize(Http())
     service = apiclient.discovery.build('sheets', 'v4', http=httpauth,
                                         discoveryServiceUrl='https://sheets.googleapis.com/$discovery/rest?version=v4')
     # Collecting data from authorized sheet
@@ -66,7 +66,7 @@ def write_to_gss(sheet_id, columns_dict, access_token, ad_acc_id, credence_file)
     prev_num = sum([1 if ele == list_of_dates[-1] else 0 for ele in list_of_dates])
     last_num = len(list_of_dates)
     # Write new data to sheet or rewriting 'today' data.
-    if [datetime.datetime.today().strftime('%Y-%m-%d')] != list_of_dates[-1]:
+    if [datetime.today().strftime('%Y-%m-%d')] != list_of_dates[-1]:
         service.spreadsheets().values().batchUpdate(spreadsheetId=sheet_id, body={
                 'valueInputOption': 'USER_ENTERED',
                 'data': [{'majorDimension': 'COLUMNS', 'range': f'{columns_dict[column]}{last_num+1}',
@@ -80,7 +80,7 @@ def write_to_gss(sheet_id, columns_dict, access_token, ad_acc_id, credence_file)
                     'range': f'{columns_dict[column]}{last_num - prev_num + 1}',
                     'values': [dataframe[column].tolist()]} for column in columns_dict.keys()]
         }).execute()
-        print('Prevision data was rewrited')
+        print('Prevision data was rewritten')
 
 
 def main():
@@ -91,11 +91,11 @@ def main():
     credence = settings['credence']
     for i in settings['ads']:
         access_token = i['access_token']
-        ad_acco_id = i['ad_account_id']
+        ad_acc_id = i['ad_account_id']
         sp_sheet_id = i['sp_sheet_id']
         columns_dict_from_set = dict(zip(i['columns_list'], i['letter_list']))
-        print('Write data to:\n', access_token, ad_acco_id, sp_sheet_id, columns_dict_from_set)
-        write_to_gss(sp_sheet_id, columns_dict_from_set, access_token, ad_acco_id, credence)
+        print('Write data to:\n', access_token, ad_acc_id, sp_sheet_id, columns_dict_from_set)
+        write_to_gss(sp_sheet_id, columns_dict_from_set, access_token, ad_acc_id, credence)
 
     # Show end-state window
     root = tkinter.Tk()
