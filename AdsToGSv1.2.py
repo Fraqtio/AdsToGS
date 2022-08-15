@@ -3,12 +3,15 @@ import pandas as pd
 from httplib2 import Http
 import apiclient
 from oauth2client.service_account import ServiceAccountCredentials
-from datetime import datetime
+import datetime
 import json
 from facebook_business.api import FacebookAdsApi
 import tkinter
 from tkinter import ttk
 
+
+def date_format_change(date):
+    return date.split('-')[2]+'.'+date.split('-')[1]
 
 # Taking all FB Ads account insights by selected columns and selected date preset, divided by ad.
 def take_ad_info(ad_acc_id, token):
@@ -22,7 +25,7 @@ def take_ad_info(ad_acc_id, token):
         'date_start',
     ]
     params = {
-        # 'time_range': {},
+        # 'time_range': {"since":"2020-08-07","until":"2022-08-10"}, test preset
         'filtering': [],
         'level': 'ad',
         'breakdowns': [],
@@ -44,6 +47,7 @@ def write_to_df(ad_info, columns_list):
             except:
                 table_df.loc[ind, column] = ad.get(column)
     table_df = table_df.loc[table_df['spend'] != 0]
+    table_df['date_start'] = table_df['date_start'].apply(date_format_change)
     print(table_df.head(1), '\n ... \n', table_df.tail(1))
     return table_df
 
@@ -66,18 +70,18 @@ def write_to_gss(sheet_id, columns_dict, access_token, ad_acc_id, credence_file)
     prev_num = sum([1 if ele == list_of_dates[-1] else 0 for ele in list_of_dates])
     last_num = len(list_of_dates)
     # Write new data to sheet or rewriting 'today' data.
-    if [datetime.today().strftime('%Y-%m-%d')] != list_of_dates[-1]:
+    if [datetime.datetime.today().strftime('%d.%m')] != list_of_dates[-1]:
         service.spreadsheets().values().batchUpdate(spreadsheetId=sheet_id, body={
-                'valueInputOption': 'USER_ENTERED',
+                'valueInputOption': 'RAW',
                 'data': [{'majorDimension': 'COLUMNS', 'range': f'{columns_dict[column]}{last_num+1}',
                 'values': [dataframe[column].tolist()]} for column in columns_dict.keys()]
         }).execute()
         print('New data added')
 
     else:
-        service.spreadsheets().values().batchUpdate(spreadsheetId=sheet_id, body={'valueInputOption': 'USER_ENTERED',
-                    'data': [{'majorDimension': 'COLUMNS',
-                    'range': f'{columns_dict[column]}{last_num - prev_num + 1}',
+        service.spreadsheets().values().batchUpdate(spreadsheetId=sheet_id, body={
+                    'valueInputOption': 'RAW',
+                    'data': [{'majorDimension': 'COLUMNS', 'range': f'{columns_dict[column]}{last_num - prev_num + 1}',
                     'values': [dataframe[column].tolist()]} for column in columns_dict.keys()]
         }).execute()
         print('Prevision data was rewritten')
@@ -99,7 +103,7 @@ def main():
 
     # Show end-state window
     root = tkinter.Tk()
-    frm = ttk.Frame(root, padding=10)
+    frm = ttk.Frame(root, padding=100)
     frm.grid()
     ttk.Label(frm, text="Done!").grid(column=0, row=0)
     ttk.Button(frm, text="Quit", command=root.destroy).grid(column=0, row=1)
